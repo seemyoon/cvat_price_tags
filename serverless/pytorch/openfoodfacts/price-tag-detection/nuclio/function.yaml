@@ -1,0 +1,48 @@
+metadata:
+  name: pth-openfoodfacts-price-tag-detection
+  namespace: cvat
+  annotations:
+    name: Price Tag Detection
+    type: detector
+    spec: |
+      [
+        { "id": 0, "name": "price_tag", "type": "rectangle" }
+      ]
+
+spec:
+  description: Price tag detector from openfoodfacts/price-tag-detection (HuggingFace)
+  runtime: 'python:3.10'
+  handler: main:handler
+  eventTimeout: 30s
+
+  build:
+    image: cvat.pth.openfoodfacts.price-tag-detection
+    baseImage: ubuntu:22.04
+
+    directives:
+      preCopy:
+        - kind: ENV
+          value: DEBIAN_FRONTEND=noninteractive
+        - kind: RUN
+          value: apt-get update && apt-get install --no-install-recommends -y python3-pip python-is-python3 libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
+        - kind: RUN
+          value: pip install opencv-python-headless --no-cache-dir
+        - kind: RUN
+          value: pip install ultralytics huggingface_hub pillow pyyaml --no-cache-dir
+        - kind: WORKDIR
+          value: /opt/nuclio
+
+  triggers:
+    myHttpTrigger:
+      numWorkers: 1
+      kind: 'http'
+      workerAvailabilityTimeoutMilliseconds: 10000
+      attributes:
+        maxRequestBodySize: 33554432 # 32MB
+
+  platform:
+    attributes:
+      restartPolicy:
+        name: always
+        maximumRetryCount: 3
+      mountMode: volume
